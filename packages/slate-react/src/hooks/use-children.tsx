@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { Ancestor, Descendant, Editor, Element, Range } from 'slate'
 import {
   RenderElementProps,
@@ -13,10 +13,7 @@ import { NODE_TO_INDEX, NODE_TO_PARENT } from '../utils/weak-maps'
 import { useDecorate } from './use-decorate'
 import { SelectedContext } from './use-selected'
 import { useSlateStatic } from './use-slate-static'
-
-/**
- * Children.
- */
+import { FixedSizeList as List } from 'react-window'
 
 const useChildren = (props: {
   decorations: Range[]
@@ -34,64 +31,90 @@ const useChildren = (props: {
     renderLeaf,
     selection,
   } = props
+
   const decorate = useDecorate()
   const editor = useSlateStatic()
   const path = ReactEditor.findPath(editor, node)
-  const children = []
+
   const isLeafBlock =
     Element.isElement(node) &&
     !editor.isInline(node) &&
     Editor.hasInlines(editor, node)
 
-  for (let i = 0; i < node.children.length; i++) {
-    const p = path.concat(i)
-    const n = node.children[i] as Descendant
-    const key = ReactEditor.findKey(editor, n)
-    const range = Editor.range(editor, p)
-    const sel = selection && Range.intersection(range, selection)
-    const ds = decorate([n, p])
+  const rowRenderer = useCallback(
+    ({ index, style }) => {
+      const p = path.concat(index)
+      const n = node.children[index] as Descendant
+      const key = ReactEditor.findKey(editor, n)
+      const range = Editor.range(editor, p)
+      const sel = selection && Range.intersection(range, selection)
+      const ds = decorate([n, p])
 
-    for (const dec of decorations) {
-      const d = Range.intersection(dec, range)
-
-      if (d) {
-        ds.push(d)
+      for (const dec of decorations) {
+        const d = Range.intersection(dec, range)
+        if (d) {
+          ds.push(d)
+        }
       }
-    }
 
-    if (Element.isElement(n)) {
-      children.push(
-        <SelectedContext.Provider key={`provider-${key.id}`} value={!!sel}>
-          <ElementComponent
-            decorations={ds}
-            element={n}
-            key={key.id}
-            renderElement={renderElement}
-            renderPlaceholder={renderPlaceholder}
-            renderLeaf={renderLeaf}
-            selection={sel}
-          />
-        </SelectedContext.Provider>
-      )
-    } else {
-      children.push(
-        <TextComponent
-          decorations={ds}
-          key={key.id}
-          isLast={isLeafBlock && i === node.children.length - 1}
-          parent={node}
-          renderPlaceholder={renderPlaceholder}
-          renderLeaf={renderLeaf}
-          text={n}
-        />
-      )
-    }
+      NODE_TO_INDEX.set(n, index)
+      NODE_TO_PARENT.set(n, node)
 
-    NODE_TO_INDEX.set(n, i)
-    NODE_TO_PARENT.set(n, node)
-  }
+      if (Element.isElement(n)) {
+        return (
+          <SelectedContext.Provider key={`provider-${key.id}`} value={!!sel}>
+            <div style={style}>
+              <ElementComponent
+                decorations={ds}
+                element={n}
+                renderElement={renderElement}
+                renderPlaceholder={renderPlaceholder}
+                renderLeaf={renderLeaf}
+                selection={sel}
+              />
+            </div>
+          </SelectedContext.Provider>
+        )
+      } else {
+        return (
+          <div style={style}>
+            <TextComponent
+              decorations={ds}
+              key={key.id}
+              isLast={isLeafBlock && index === node.children.length - 1}
+              parent={node}
+              renderPlaceholder={renderPlaceholder}
+              renderLeaf={renderLeaf}
+              text={n}
+            />
+          </div>
+        )
+      }
+    },
+    [
+      decorate,
+      decorations,
+      editor,
+      isLeafBlock,
+      node,
+      path,
+      renderElement,
+      renderLeaf,
+      renderPlaceholder,
+      selection,
+    ]
+  )
 
-  return children
+  return (
+    <List
+      height={500} // Adjust height as needed
+      itemCount={node.children.length}
+      itemSize={60} // Adjust item height as needed or calculate dynamically
+      width={'100%'}
+    >
+      {rowRenderer}
+    </List>
+  )
 }
 
 export default useChildren

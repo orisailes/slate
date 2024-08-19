@@ -34,7 +34,7 @@ const HugeDocumentExample = () => {
 const Element = ({ attributes, children, element }) => {
   switch (element.type) {
     case 'heading':
-      return <h1 {...attributes}>{children}</h1>
+      return <p {...attributes}>{children}</p>
     default:
       return <p {...attributes}>{children}</p>
   }
