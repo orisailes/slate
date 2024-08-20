@@ -1,7 +1,8 @@
-import React, { useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback, useEffect } from 'react'
 import { faker } from '@faker-js/faker'
 import { createEditor, Descendant } from 'slate'
 import { Slate, Editable, withReact } from 'slate-react'
+import { withHistory } from 'slate-history'
 
 const HEADINGS = 100
 const PARAGRAPHS = 7
@@ -23,11 +24,34 @@ for (let h = 0; h < HEADINGS; h++) {
 
 const HugeDocumentExample = () => {
   const renderElement = useCallback(props => <Element {...props} />, [])
-  const editor = useMemo(() => withReact(createEditor()), [])
+  const editor = useMemo(() => withHistory(withReact(createEditor())), [])
+  // useEffect(() => {
+  //   console.log('hhelo')
+  //   if (editor) {
+  //     document.addEventListener('keydown', event => {
+  //       if (event.key === 'KeyZ' && event.ctrlKey) {
+  //         console.log('command z')
+  //       }
+  //
+  //       if (event.key === 'KeyZ' && event.shiftKey) {
+  //         console.log('command shift z')
+  //       }
+  //     })
+  //   }
+  // }, [editor])
   return (
-    <Slate editor={editor} initialValue={initialValue}>
-      <Editable renderElement={renderElement} spellCheck autoFocus />
-    </Slate>
+    <>
+      <button
+        onClick={() => {
+          editor.undo()
+        }}
+      >
+        undo
+      </button>
+      <Slate editor={editor} initialValue={initialValue}>
+        <Editable renderElement={renderElement} spellCheck autoFocus />
+      </Slate>
+    </>
   )
 }
 
